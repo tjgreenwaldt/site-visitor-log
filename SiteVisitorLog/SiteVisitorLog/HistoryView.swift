@@ -23,37 +23,60 @@ struct HistoryView: View {
 
         return historyVisitors.filter { visitor in
             visitor.fullName.localizedCaseInsensitiveContains(trimmedSearch) ||
-            visitor.company.localizedCaseInsensitiveContains(trimmedSearch)
+            visitor.company.localizedCaseInsensitiveContains(trimmedSearch) ||
+            visitor.hostName.localizedCaseInsensitiveContains(trimmedSearch)
         }
     }
 
     var body: some View {
-        List(filteredVisitors) { visitor in
-            NavigationLink {
-                VisitorDetailView(visitorId: visitor.id)
-            } label: {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(visitor.fullName)
-                        .font(.headline)
-                    Text(visitor.company)
-                    Text(visitor.siteName)
-                        .foregroundStyle(.secondary)
-                    Text("Signed In: \(visitor.signInTime, format: .dateTime.month().day().year().hour().minute())")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    if let signOutTime = visitor.signOutTime {
-                        Text("Signed Out: \(signOutTime, format: .dateTime.month().day().year().hour().minute())")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+        Group {
+            if filteredVisitors.isEmpty {
+                emptyStateView
+            } else {
+                List(filteredVisitors) { visitor in
+                    NavigationLink {
+                        VisitorDetailView(visitorId: visitor.id)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(visitor.fullName)
+                                .font(.headline)
+                            Text(visitor.company)
+                            Text(visitor.siteName)
+                                .foregroundStyle(.secondary)
+                            Text("Host: \(visitor.hostName)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Text("Signed In: \(visitor.signInTime, format: .dateTime.month().day().year().hour().minute())")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            if let signOutTime = visitor.signOutTime {
+                                Text("Signed Out: \(signOutTime, format: .dateTime.month().day().year().hour().minute())")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
+                    .padding(.vertical, 4)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(.vertical, 4)
         }
-        .searchable(text: $searchText, prompt: "Search name or company")
+        .searchable(text: $searchText, prompt: "Search name, company, or host")
         .navigationTitle("History")
         .onAppear(perform: loadVisitors)
+    }
+
+    @ViewBuilder
+    private var emptyStateView: some View {
+        if historyVisitors.isEmpty {
+            ContentUnavailableView(
+                "No Visitor History",
+                systemImage: "clock.arrow.circlepath",
+                description: Text("Signed-out visitor records for this site will appear here.")
+            )
+        } else {
+            ContentUnavailableView.search(text: searchText)
+        }
     }
 
     private func loadVisitors() {
