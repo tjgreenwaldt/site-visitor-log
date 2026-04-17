@@ -9,6 +9,7 @@ import SwiftUI
 import SwiftData
 
 struct ContentView: View {
+    @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var syncService: VisitorSyncService
     @AppStorage(SiteSelectionStorageKeys.selectedSiteId) private var selectedSiteId = ""
     @AppStorage(SiteSelectionStorageKeys.selectedSiteName) private var selectedSiteName = ""
@@ -136,6 +137,9 @@ struct ContentView: View {
         .task {
             syncService.refreshPendingSyncCount()
         }
+        .task(id: selectedSiteId) {
+            refreshSelectedSite()
+        }
     }
 
     private var syncSummaryText: String {
@@ -148,6 +152,32 @@ struct ContentView: View {
         }
 
         return "\(syncService.pendingSyncCount) visitor records pending sync"
+    }
+
+    private func refreshSelectedSite() {
+        guard !selectedSiteId.isEmpty else { return }
+
+        let descriptor = FetchDescriptor<SiteEntity>(
+            predicate: #Predicate { site in
+                site.siteId == selectedSiteId
+            }
+        )
+
+        guard let site = try? modelContext.fetch(descriptor).first else {
+            selectedSiteId = ""
+            selectedSiteName = ""
+            return
+        }
+
+        guard site.isActive else {
+            selectedSiteId = ""
+            selectedSiteName = ""
+            return
+        }
+
+        if selectedSiteName != site.name {
+            selectedSiteName = site.name
+        }
     }
 }
 

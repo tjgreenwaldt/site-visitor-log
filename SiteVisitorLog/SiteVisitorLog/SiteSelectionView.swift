@@ -6,10 +6,17 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct SiteSelectionView: View {
     @AppStorage(SiteSelectionStorageKeys.selectedSiteId) private var selectedSiteId = ""
     @AppStorage(SiteSelectionStorageKeys.selectedSiteName) private var selectedSiteName = ""
+    @Query(
+        filter: #Predicate<SiteEntity> { site in
+            site.isActive
+        },
+        sort: \SiteEntity.name
+    ) private var activeSites: [SiteEntity]
 
     var body: some View {
         ZStack {
@@ -38,19 +45,27 @@ struct SiteSelectionView: View {
                         .foregroundStyle(Color.secondaryNavy.opacity(0.75))
                         .multilineTextAlignment(.center)
 
-                    VStack(spacing: 14) {
-                        ForEach(SiteSource.sites) { site in
-                            Button {
-                                selectedSiteId = site.id
-                                selectedSiteName = site.name
-                            } label: {
-                                Text(site.name)
+                    if activeSites.isEmpty {
+                        ContentUnavailableView(
+                            "No Active Sites",
+                            systemImage: "building.2.crop.circle",
+                            description: Text("Add or reactivate a site to continue.")
+                        )
+                    } else {
+                        VStack(spacing: 14) {
+                            ForEach(activeSites) { site in
+                                Button {
+                                    selectedSiteId = site.siteId
+                                    selectedSiteName = site.name
+                                } label: {
+                                    Text(site.name)
+                                }
+                                .buttonStyle(
+                                    selectedSiteId == site.siteId
+                                    ? AnyButtonStyle(PrimaryButtonStyle())
+                                    : AnyButtonStyle(SecondaryButtonStyle())
+                                )
                             }
-                            .buttonStyle(
-                                selectedSiteId == site.id
-                                ? AnyButtonStyle(PrimaryButtonStyle())
-                                : AnyButtonStyle(SecondaryButtonStyle())
-                            )
                         }
                     }
 
@@ -60,6 +75,15 @@ struct SiteSelectionView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.horizontal, 24)
                 .padding(.vertical, 32)
+            }
+        }
+        .navigationTitle("Sites")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink("Manage") {
+                    SiteManagementView()
+                }
             }
         }
     }

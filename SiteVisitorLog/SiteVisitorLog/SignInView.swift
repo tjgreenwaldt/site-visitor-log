@@ -45,7 +45,7 @@ struct SignInView: View {
                         .fill(locationStatusColor)
                         .frame(width: 12, height: 12)
 
-                    Text("Location")
+                    Text(locationStatusText)
                         .foregroundStyle(.primary)
                 }
             }
@@ -129,6 +129,15 @@ struct SignInView: View {
             return .yellow
         case .unavailable, .denied:
             return .red
+        }
+    }
+
+    private var locationStatusText: String {
+        switch locationManager.status {
+        case .ready:
+            return "Ready"
+        case .checking, .unavailable, .denied:
+            return "Unavailable"
         }
     }
 

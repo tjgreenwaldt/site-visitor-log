@@ -17,6 +17,7 @@ struct SiteVisitorLogApp: App {
         let sharedModelContainer = {
         let schema = Schema([
             Item.self,
+            SiteEntity.self,
             VisitorRecordEntity.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
@@ -29,6 +30,7 @@ struct SiteVisitorLogApp: App {
         }()
 
         self.sharedModelContainer = sharedModelContainer
+        SiteSource.seedSitesIfNeeded(in: sharedModelContainer.mainContext)
         let repository = SwiftDataVisitorRepository(modelContext: sharedModelContainer.mainContext)
         _syncService = StateObject(wrappedValue: VisitorSyncService(repository: repository))
     }

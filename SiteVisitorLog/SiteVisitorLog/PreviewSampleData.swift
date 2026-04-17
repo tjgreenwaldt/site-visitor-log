@@ -15,12 +15,15 @@ enum PreviewSampleData {
     static let container: ModelContainer = {
         let schema = Schema([
             Item.self,
+            SiteEntity.self,
             VisitorRecordEntity.self,
         ])
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
         let container = try! ModelContainer(for: schema, configurations: [configuration])
         let context = container.mainContext
         let now = Date()
+
+        SiteSource.seedSitesIfNeeded(in: context)
 
         let sampleVisitors = [
             VisitorRecordEntity(
