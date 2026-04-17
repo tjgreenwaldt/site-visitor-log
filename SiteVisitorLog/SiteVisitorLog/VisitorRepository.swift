@@ -15,6 +15,7 @@ protocol VisitorRepository {
     func markSyncSuccess(id: UUID, remoteId: String?, updatedAt: Date) throws -> VisitorRecordDTO
     func markSyncFailure(id: UUID) throws -> VisitorRecordDTO
     func upsertRemoteVisitor(_ visitor: VisitorRecordDTO) throws -> VisitorRecordDTO
+    func pruneSyncedHistory(olderThan cutoffDate: Date) throws
 }
 
 enum VisitorRepositoryError: LocalizedError {
@@ -92,5 +93,9 @@ private final class PreviewVisitorRepository: VisitorRepository {
 
     func upsertRemoteVisitor(_ visitor: VisitorRecordDTO) throws -> VisitorRecordDTO {
         try repository.upsertRemoteVisitor(visitor)
+    }
+
+    func pruneSyncedHistory(olderThan cutoffDate: Date) throws {
+        try repository.pruneSyncedHistory(olderThan: cutoffDate)
     }
 }

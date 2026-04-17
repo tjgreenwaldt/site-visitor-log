@@ -202,6 +202,23 @@ final class SwiftDataVisitorRepository: VisitorRepository {
         return entity.dto
     }
 
+    func pruneSyncedHistory(olderThan cutoffDate: Date) throws {
+        let descriptor = FetchDescriptor<VisitorRecordEntity>()
+        let entitiesToDelete = try modelContext.fetch(descriptor).filter { entity in
+            guard entity.syncStatus == .synced else { return false }
+            guard let signOutTime = entity.signOutTime else { return false }
+            return signOutTime < cutoffDate
+        }
+
+        guard !entitiesToDelete.isEmpty else { return }
+
+        for entity in entitiesToDelete {
+            modelContext.delete(entity)
+        }
+
+        try save()
+    }
+
     private func fetchEntity(id: UUID) throws -> VisitorRecordEntity {
         guard let entity = try fetchEntity(localId: id) else {
             throw VisitorRepositoryError.visitorNotFound

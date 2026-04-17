@@ -32,7 +32,7 @@ struct SiteVisitorLogApp: App {
         self.sharedModelContainer = sharedModelContainer
         SiteSource.seedSitesIfNeeded(in: sharedModelContainer.mainContext)
         let repository = SwiftDataVisitorRepository(modelContext: sharedModelContainer.mainContext)
-        let remoteDataSource = MockVisitorRemoteDataSource()
+        let remoteDataSource = VisitorRemoteDataSourceProvider.make()
         _syncService = StateObject(wrappedValue: VisitorSyncService(repository: repository, remoteDataSource: remoteDataSource))
     }
 

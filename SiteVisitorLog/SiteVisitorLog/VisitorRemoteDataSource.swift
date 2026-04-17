@@ -2,7 +2,11 @@ import Foundation
 
 protocol VisitorRemoteDataSource: Sendable {
     func upload(visitor: VisitorRecordDTO) async throws -> VisitorRecordDTO
-    func fetchVisitorsChanged(since: Date?) async throws -> [VisitorRecordDTO]
+    func fetchVisitorsChanged(
+        since: Date?,
+        forSiteId siteId: String,
+        historyRetentionDays: Int
+    ) async throws -> [VisitorRecordDTO]
 }
 
 actor MockVisitorRemoteDataSource: VisitorRemoteDataSource {
@@ -43,15 +47,33 @@ actor MockVisitorRemoteDataSource: VisitorRemoteDataSource {
         return storedRecord
     }
 
-    func fetchVisitorsChanged(since: Date?) async throws -> [VisitorRecordDTO] {
+    func fetchVisitorsChanged(
+        since: Date?,
+        forSiteId siteId: String,
+        historyRetentionDays: Int
+    ) async throws -> [VisitorRecordDTO] {
         try await Task.sleep(for: .milliseconds(250))
 
-        let records = recordsByRemoteId.values.sorted { $0.updatedAt < $1.updatedAt }
+        let retentionCutoff = Calendar.current.date(byAdding: .day, value: -historyRetentionDays, to: Date()) ?? .distantPast
+        let records = recordsByRemoteId.values
+            .filter { record in
+                guard record.siteId == siteId else { return false }
+                if record.signOutTime == nil {
+                    return true
+                }
+                return (record.signOutTime ?? .distantPast) >= retentionCutoff
+            }
+            .sorted { $0.updatedAt < $1.updatedAt }
 
         guard let since else {
             return records
         }
 
-        return records.filter { $0.updatedAt > since }
+        return records.filter { record in
+            if record.signOutTime == nil {
+                return true
+            }
+            return record.updatedAt > since
+        }
     }
 }

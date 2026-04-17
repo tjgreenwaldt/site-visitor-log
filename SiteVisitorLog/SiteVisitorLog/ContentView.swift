@@ -75,12 +75,44 @@ struct ContentView: View {
 
                                 Button(syncService.isSyncing ? "Syncing..." : "Sync Now") {
                                     Task {
-                                        await syncService.syncPendingVisitors()
+                                        await syncService.syncPendingVisitors(forSiteId: selectedSiteId)
                                     }
                                 }
                                 .buttonStyle(.bordered)
                                 .disabled(syncService.isSyncing)
                             }
+
+                            #if DEBUG
+                            VStack(alignment: .leading, spacing: 8) {
+                                Divider()
+
+                                HStack {
+                                    Text("Diagnostics")
+                                        .font(.caption)
+                                        .fontWeight(.semibold)
+                                        .textCase(.uppercase)
+                                        .foregroundStyle(.secondary)
+
+                                    Spacer()
+
+                                    Button("Refresh From Server") {
+                                        Task {
+                                            await syncService.refreshFromServer(forSiteId: selectedSiteId)
+                                        }
+                                    }
+                                    .font(.caption)
+                                    .disabled(syncService.isSyncing)
+                                }
+
+                                diagnosticRow(title: "Backend", value: backendLabel)
+                                diagnosticRow(title: "Pending", value: "\(syncService.pendingSyncCount)")
+                                diagnosticRow(
+                                    title: "Last Success",
+                                    value: syncService.lastSuccessfulSyncAt?.formatted(date: .abbreviated, time: .shortened) ?? "Never"
+                                )
+                                diagnosticRow(title: "Last Error", value: syncService.lastSyncError ?? "None")
+                            }
+                            #endif
 
                             if let lastSyncAttemptAt = syncService.lastSyncAttemptAt {
                                 if let lastSuccessfulSyncAt = syncService.lastSuccessfulSyncAt {
@@ -173,6 +205,31 @@ struct ContentView: View {
 
         return "\(syncService.pendingSyncCount) visitor records pending sync"
     }
+
+    #if DEBUG
+    private var backendLabel: String {
+        switch SupabaseConfig.backend {
+        case .mock:
+            return "Mock"
+        case .supabase:
+            return "Supabase"
+        }
+    }
+
+    private func diagnosticRow(title: String, value: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(width: 88, alignment: .leading)
+
+            Text(value)
+                .font(.caption)
+                .foregroundStyle(Color.secondaryNavy)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+    #endif
 
     private func refreshSelectedSite() {
         guard !selectedSiteId.isEmpty else { return }
