@@ -1,5 +1,5 @@
 //
-//  SignInView.swift
+//  EditVisitorView.swift
 //  SiteVisitorLog
 //
 //  Created by Tyler Greenwaldt on 4/16/26.
@@ -10,22 +10,39 @@ import SwiftData
 import PhotosUI
 import UIKit
 
-struct SignInView: View {
+struct EditVisitorView: View {
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
 
-    @State private var fullName = ""
-    @State private var company = ""
-    @State private var phoneNumber = ""
-    @State private var hostName = ""
-    @State private var siteName = ""
-    @State private var visitReason = ""
-    @State private var safetyBriefingCompleted = false
-    @State private var escorted = false
-    @State private var notes = ""
+    let visitor: Visitor
+
+    @State private var fullName: String
+    @State private var company: String
+    @State private var phoneNumber: String
+    @State private var hostName: String
+    @State private var siteName: String
+    @State private var visitReason: String
+    @State private var safetyBriefingCompleted: Bool
+    @State private var escorted: Bool
+    @State private var notes: String
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var selectedPhotoImage: UIImage?
     @State private var showingCamera = false
     @State private var showingCameraUnavailableAlert = false
+
+    init(visitor: Visitor) {
+        self.visitor = visitor
+        _fullName = State(initialValue: visitor.fullName)
+        _company = State(initialValue: visitor.company)
+        _phoneNumber = State(initialValue: visitor.phoneNumber)
+        _hostName = State(initialValue: visitor.hostName)
+        _siteName = State(initialValue: visitor.siteName)
+        _visitReason = State(initialValue: visitor.visitReason)
+        _safetyBriefingCompleted = State(initialValue: visitor.safetyBriefingCompleted)
+        _escorted = State(initialValue: visitor.escorted)
+        _notes = State(initialValue: visitor.notes ?? "")
+        _selectedPhotoImage = State(initialValue: visitor.photoData.flatMap(UIImage.init(data:)))
+    }
 
     private var canSave: Bool {
         !fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
@@ -47,6 +64,13 @@ struct SignInView: View {
 
                 PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
                     Text("Choose Photo")
+                }
+
+                if selectedPhotoImage != nil {
+                    Button("Remove Photo", role: .destructive) {
+                        selectedPhotoItem = nil
+                        selectedPhotoImage = nil
+                    }
                 }
             }
 
@@ -71,14 +95,21 @@ struct SignInView: View {
                 TextField("Notes", text: $notes, prompt: Text("Add optional notes"), axis: .vertical)
                     .lineLimit(3...6)
             }
+        }
+        .navigationTitle("Edit Visitor")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button("Cancel") {
+                    dismiss()
+                }
+            }
 
-            Section {
-                Button("Save", action: saveVisitor)
-                    .frame(maxWidth: .infinity, alignment: .center)
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Save", action: saveChanges)
                     .disabled(!canSave)
             }
         }
-        .navigationTitle("Sign In")
         .sheet(isPresented: $showingCamera) {
             CameraPicker(image: $selectedPhotoImage)
         }
@@ -92,37 +123,26 @@ struct SignInView: View {
         }
     }
 
-    private func saveVisitor() {
+    private func saveChanges() {
         let trimmedNotes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
-        let visitor = Visitor(
-            fullName: fullName.trimmingCharacters(in: .whitespacesAndNewlines),
-            company: company.trimmingCharacters(in: .whitespacesAndNewlines),
-            phoneNumber: phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines),
-            hostName: hostName.trimmingCharacters(in: .whitespacesAndNewlines),
-            siteName: siteName.trimmingCharacters(in: .whitespacesAndNewlines),
-            visitReason: visitReason.trimmingCharacters(in: .whitespacesAndNewlines),
-            safetyBriefingCompleted: safetyBriefingCompleted,
-            escorted: escorted,
-            notes: trimmedNotes.isEmpty ? nil : trimmedNotes,
-            photoData: selectedPhotoImage?.jpegData(compressionQuality: 0.7)
-        )
 
-        modelContext.insert(visitor)
-        clearForm()
-    }
+        visitor.fullName = fullName.trimmingCharacters(in: .whitespacesAndNewlines)
+        visitor.company = company.trimmingCharacters(in: .whitespacesAndNewlines)
+        visitor.phoneNumber = phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines)
+        visitor.hostName = hostName.trimmingCharacters(in: .whitespacesAndNewlines)
+        visitor.siteName = siteName.trimmingCharacters(in: .whitespacesAndNewlines)
+        visitor.visitReason = visitReason.trimmingCharacters(in: .whitespacesAndNewlines)
+        visitor.safetyBriefingCompleted = safetyBriefingCompleted
+        visitor.escorted = escorted
+        visitor.notes = trimmedNotes.isEmpty ? nil : trimmedNotes
+        visitor.photoData = selectedPhotoImage?.jpegData(compressionQuality: 0.7)
 
-    private func clearForm() {
-        fullName = ""
-        company = ""
-        phoneNumber = ""
-        hostName = ""
-        siteName = ""
-        visitReason = ""
-        safetyBriefingCompleted = false
-        escorted = false
-        notes = ""
-        selectedPhotoItem = nil
-        selectedPhotoImage = nil
+        do {
+            try modelContext.save()
+            dismiss()
+        } catch {
+            print("Failed to save visitor changes: \(error)")
+        }
     }
 
     @ViewBuilder
@@ -179,43 +199,21 @@ struct SignInView: View {
     }
 }
 
-struct CameraPicker: UIViewControllerRepresentable {
-    @Environment(\.dismiss) private var dismiss
-    @Binding var image: UIImage?
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
-    }
-
-    func makeUIViewController(context: Context) -> UIImagePickerController {
-        let picker = UIImagePickerController()
-        picker.sourceType = .camera
-        picker.delegate = context.coordinator
-        return picker
-    }
-
-    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {
-    }
-
-    final class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
-        private let parent: CameraPicker
-
-        init(_ parent: CameraPicker) {
-            self.parent = parent
-        }
-
-        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
-            parent.image = info[.originalImage] as? UIImage
-            parent.dismiss()
-        }
-
-        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            parent.dismiss()
-        }
-    }
-}
-
 #Preview {
-    SignInView()
-        .modelContainer(PreviewSampleData.container)
+    NavigationStack {
+        EditVisitorView(
+            visitor: Visitor(
+                fullName: "Jordan Lee",
+                company: "Acme Industrial",
+                phoneNumber: "555-0101",
+                hostName: "Taylor Smith",
+                siteName: "North Plant",
+                visitReason: "Equipment inspection",
+                safetyBriefingCompleted: true,
+                escorted: true,
+                notes: "Wearing required PPE."
+            )
+        )
+    }
+    .modelContainer(PreviewSampleData.container)
 }

@@ -9,7 +9,6 @@ import SwiftUI
 import SwiftData
 
 struct ActiveVisitorsView: View {
-    @Environment(\.modelContext) private var modelContext
     @Query(
         filter: #Predicate<Visitor> { visitor in
             visitor.signOutTime == nil
@@ -21,8 +20,8 @@ struct ActiveVisitorsView: View {
     var body: some View {
         List {
             ForEach(activeVisitors) { visitor in
-                Button {
-                    signOut(visitor)
+                NavigationLink {
+                    VisitorDetailView(visitor: visitor)
                 } label: {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(visitor.fullName)
@@ -36,23 +35,15 @@ struct ActiveVisitorsView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .buttonStyle(.plain)
             }
         }
-    }
-
-    private func signOut(_ visitor: Visitor) {
-        visitor.signOutTime = Date()
-
-        do {
-            try modelContext.save()
-        } catch {
-            print("Failed to sign out visitor: \(error)")
-        }
+        .navigationTitle("Active Visitors")
     }
 }
 
 #Preview {
-    ActiveVisitorsView()
-        .modelContainer(PreviewSampleData.container)
+    NavigationStack {
+        ActiveVisitorsView()
+    }
+    .modelContainer(PreviewSampleData.container)
 }

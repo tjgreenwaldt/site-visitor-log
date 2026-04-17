@@ -22,6 +22,7 @@ final class Visitor {
     var safetyBriefingCompleted: Bool
     var escorted: Bool
     var notes: String?
+    var photoData: Data?
 
     init(
         id: UUID = UUID(),
@@ -35,7 +36,8 @@ final class Visitor {
         signOutTime: Date? = nil,
         safetyBriefingCompleted: Bool,
         escorted: Bool,
-        notes: String? = nil
+        notes: String? = nil,
+        photoData: Data? = nil
     ) {
         self.id = id
         self.fullName = fullName
@@ -49,5 +51,6 @@ final class Visitor {
         self.safetyBriefingCompleted = safetyBriefingCompleted
         self.escorted = escorted
         self.notes = notes
+        self.photoData = photoData
     }
 }
