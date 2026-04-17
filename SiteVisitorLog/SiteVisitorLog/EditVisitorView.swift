@@ -7,14 +7,13 @@
 
 import SwiftUI
 import SwiftData
-import PhotosUI
-import UIKit
 
 struct EditVisitorView: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var modelContext
+    @Environment(\.visitorRepository) private var visitorRepository
 
-    let visitor: Visitor
+    let visitor: VisitorRecordDTO
+    let onSave: (VisitorRecordDTO) -> Void
 
     @State private var fullName: String
     @State private var company: String
@@ -24,13 +23,10 @@ struct EditVisitorView: View {
     @State private var safetyBriefingCompleted: Bool
     @State private var escorted: Bool
     @State private var notes: String
-    @State private var selectedPhotoItem: PhotosPickerItem?
-    @State private var selectedPhotoImage: UIImage?
-    @State private var showingCamera = false
-    @State private var showingCameraUnavailableAlert = false
 
-    init(visitor: Visitor) {
+    init(visitor: VisitorRecordDTO, onSave: @escaping (VisitorRecordDTO) -> Void = { _ in }) {
         self.visitor = visitor
+        self.onSave = onSave
         _fullName = State(initialValue: visitor.fullName)
         _company = State(initialValue: visitor.company)
         _phoneNumber = State(initialValue: visitor.phoneNumber)
@@ -39,7 +35,6 @@ struct EditVisitorView: View {
         _safetyBriefingCompleted = State(initialValue: visitor.safetyBriefingCompleted)
         _escorted = State(initialValue: visitor.escorted)
         _notes = State(initialValue: visitor.notes ?? "")
-        _selectedPhotoImage = State(initialValue: visitor.photoData.flatMap(UIImage.init(data:)))
     }
 
     private var canSave: Bool {
@@ -50,27 +45,6 @@ struct EditVisitorView: View {
 
     var body: some View {
         Form {
-            Section("Visitor Photo") {
-                HStack {
-                    Spacer()
-                    photoPreview
-                    Spacer()
-                }
-
-                Button("Take Photo", action: openCamera)
-
-                PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
-                    Text("Choose Photo")
-                }
-
-                if selectedPhotoImage != nil {
-                    Button("Remove Photo", role: .destructive) {
-                        selectedPhotoItem = nil
-                        selectedPhotoImage = nil
-                    }
-                }
-            }
-
             Section("Required Information") {
                 TextField("Full name", text: $fullName, prompt: Text("Enter visitor name"))
                 TextField("Company", text: $company, prompt: Text("Enter company name"))
@@ -110,34 +84,36 @@ struct EditVisitorView: View {
                     .disabled(!canSave)
             }
         }
-        .sheet(isPresented: $showingCamera) {
-            CameraPicker(image: $selectedPhotoImage)
-        }
-        .alert("Camera Unavailable", isPresented: $showingCameraUnavailableAlert) {
-            Button("OK", role: .cancel) { }
-        } message: {
-            Text("This device does not have a camera available.")
-        }
-        .task(id: selectedPhotoItem) {
-            await loadSelectedPhoto()
-        }
     }
 
     private func saveChanges() {
         let trimmedNotes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        visitor.fullName = fullName.trimmingCharacters(in: .whitespacesAndNewlines)
-        visitor.company = company.trimmingCharacters(in: .whitespacesAndNewlines)
-        visitor.phoneNumber = phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines)
-        visitor.hostName = hostName.trimmingCharacters(in: .whitespacesAndNewlines)
-        visitor.visitReason = visitReason.trimmingCharacters(in: .whitespacesAndNewlines)
-        visitor.safetyBriefingCompleted = safetyBriefingCompleted
-        visitor.escorted = escorted
-        visitor.notes = trimmedNotes.isEmpty ? nil : trimmedNotes
-        visitor.photoData = selectedPhotoImage?.jpegData(compressionQuality: 0.7)
+        let updatedVisitor = VisitorRecordDTO(
+            localId: visitor.localId,
+            remoteId: visitor.remoteId,
+            siteId: visitor.siteId,
+            fullName: fullName.trimmingCharacters(in: .whitespacesAndNewlines),
+            company: company.trimmingCharacters(in: .whitespacesAndNewlines),
+            phoneNumber: phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines),
+            hostName: hostName.trimmingCharacters(in: .whitespacesAndNewlines),
+            siteName: visitor.siteName,
+            visitReason: visitReason.trimmingCharacters(in: .whitespacesAndNewlines),
+            signInTime: visitor.signInTime,
+            signOutTime: visitor.signOutTime,
+            safetyBriefingCompleted: safetyBriefingCompleted,
+            escorted: escorted,
+            notes: trimmedNotes.isEmpty ? nil : trimmedNotes,
+            latitude: visitor.latitude,
+            longitude: visitor.longitude,
+            createdAt: visitor.createdAt,
+            updatedAt: visitor.updatedAt,
+            syncStatus: visitor.syncStatus,
+            deviceId: visitor.deviceId
+        )
 
         do {
-            try modelContext.save()
+            let savedVisitor = try visitorRepository.updateVisitor(updatedVisitor)
+            onSave(savedVisitor)
             dismiss()
         } catch {
             print("Failed to save visitor changes: \(error)")
@@ -153,55 +129,12 @@ struct EditVisitorView: View {
         TextField("Phone number", text: $phoneNumber, prompt: Text("Enter phone number"))
         #endif
     }
-
-    @ViewBuilder
-    private var photoPreview: some View {
-        if let selectedPhotoImage {
-            Image(uiImage: selectedPhotoImage)
-                .resizable()
-                .scaledToFill()
-                .frame(width: 120, height: 120)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-        } else {
-            Image(systemName: "person.crop.rectangle")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 72, height: 72)
-                .foregroundStyle(.secondary)
-                .frame(width: 120, height: 120)
-                .background(Color(.secondarySystemBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-        }
-    }
-
-    private func openCamera() {
-        guard UIImagePickerController.isSourceTypeAvailable(.camera) else {
-            showingCameraUnavailableAlert = true
-            return
-        }
-
-        showingCamera = true
-    }
-
-    @MainActor
-    private func loadSelectedPhoto() async {
-        guard let selectedPhotoItem else { return }
-
-        do {
-            if let data = try await selectedPhotoItem.loadTransferable(type: Data.self),
-               let image = UIImage(data: data) {
-                selectedPhotoImage = image
-            }
-        } catch {
-            print("Failed to load selected photo: \(error)")
-        }
-    }
 }
 
 #Preview {
     NavigationStack {
         EditVisitorView(
-            visitor: Visitor(
+            visitor: VisitorRecordDTO(
                 siteId: "escalante",
                 fullName: "Jordan Lee",
                 company: "Acme Industrial",
@@ -215,5 +148,6 @@ struct EditVisitorView: View {
             )
         )
     }
+    .environment(\.visitorRepository, PreviewSampleData.visitorRepository)
     .modelContainer(PreviewSampleData.container)
 }

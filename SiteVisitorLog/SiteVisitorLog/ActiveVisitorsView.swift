@@ -9,27 +9,15 @@ import SwiftUI
 import SwiftData
 
 struct ActiveVisitorsView: View {
+    @Environment(\.visitorRepository) private var visitorRepository
     let selectedSiteId: String
-
-    @Query private var activeVisitors: [Visitor]
-
-    init(selectedSiteId: String) {
-        self.selectedSiteId = selectedSiteId
-        let siteId = selectedSiteId
-
-        _activeVisitors = Query(
-            filter: #Predicate<Visitor> { visitor in
-                visitor.signOutTime == nil && visitor.siteId == siteId
-            },
-            sort: [SortDescriptor(\Visitor.signInTime, order: .reverse)]
-        )
-    }
+    @State private var activeVisitors: [VisitorRecordDTO] = []
 
     var body: some View {
         List {
             ForEach(activeVisitors) { visitor in
                 NavigationLink {
-                    VisitorDetailView(visitor: visitor)
+                    VisitorDetailView(visitorId: visitor.id)
                 } label: {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(visitor.fullName)
@@ -46,6 +34,15 @@ struct ActiveVisitorsView: View {
             }
         }
         .navigationTitle("Active Visitors")
+        .onAppear(perform: loadVisitors)
+    }
+
+    private func loadVisitors() {
+        do {
+            activeVisitors = try visitorRepository.fetchActiveVisitors(for: selectedSiteId)
+        } catch {
+            print("Failed to load active visitors: \(error)")
+        }
     }
 }
 
@@ -53,5 +50,6 @@ struct ActiveVisitorsView: View {
     NavigationStack {
         ActiveVisitorsView(selectedSiteId: "escalante")
     }
+    .environment(\.visitorRepository, PreviewSampleData.visitorRepository)
     .modelContainer(PreviewSampleData.container)
 }

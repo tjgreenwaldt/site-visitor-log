@@ -7,97 +7,83 @@
 
 import SwiftUI
 import SwiftData
-import UIKit
 
 struct VisitorDetailView: View {
-    @Environment(\.modelContext) private var modelContext
+    @Environment(\.visitorRepository) private var visitorRepository
     @State private var showingEditView = false
+    @State private var visitor: VisitorRecordDTO?
 
-    let visitor: Visitor
+    let visitorId: UUID
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                HStack {
-                    Spacer()
-                    photoView
-                    Spacer()
-                }
+        Group {
+            if let visitor {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        VStack(alignment: .leading, spacing: 16) {
+                            detailRow(title: "Full Name", value: visitor.fullName)
+                            detailRow(title: "Company", value: visitor.company)
+                            detailRow(title: "Phone Number", value: visitor.phoneNumber)
+                            detailRow(title: "Host Name", value: visitor.hostName)
+                            detailRow(title: "Site Name", value: visitor.siteName)
+                            detailRow(title: "Reason for Visit", value: visitor.visitReason)
+                            detailRow(title: "Sign In Time", value: visitor.signInTime.formatted(date: .abbreviated, time: .shortened))
+                            detailRow(
+                                title: "Sign Out Time",
+                                value: visitor.signOutTime?.formatted(date: .abbreviated, time: .shortened) ?? "Still signed in"
+                            )
+                            detailRow(title: "Safety Briefing", value: visitor.safetyBriefingCompleted ? "Completed" : "Not completed")
+                            detailRow(title: "Escorted", value: visitor.escorted ? "Yes" : "No")
+                            detailRow(title: "Notes", value: notesText(for: visitor))
+                            detailRow(title: "Location", value: locationText(for: visitor))
+                            detailRow(title: "Sync Status", value: syncStatusText(for: visitor.syncStatus))
+                        }
 
-                VStack(alignment: .leading, spacing: 16) {
-                    detailRow(title: "Full Name", value: visitor.fullName)
-                    detailRow(title: "Company", value: visitor.company)
-                    detailRow(title: "Phone Number", value: visitor.phoneNumber)
-                    detailRow(title: "Host Name", value: visitor.hostName)
-                    detailRow(title: "Site Name", value: visitor.siteName)
-                    detailRow(title: "Reason for Visit", value: visitor.visitReason)
-                    detailRow(title: "Sign In Time", value: visitor.signInTime.formatted(date: .abbreviated, time: .shortened))
-                    detailRow(
-                        title: "Sign Out Time",
-                        value: visitor.signOutTime?.formatted(date: .abbreviated, time: .shortened) ?? "Still signed in"
-                    )
-                    detailRow(title: "Safety Briefing", value: visitor.safetyBriefingCompleted ? "Completed" : "Not completed")
-                    detailRow(title: "Escorted", value: visitor.escorted ? "Yes" : "No")
-                    detailRow(title: "Notes", value: notesText)
-                    detailRow(title: "Location", value: locationText)
+                        if visitor.signOutTime == nil {
+                            Button("Sign Out", action: signOutVisitor)
+                                .buttonStyle(.borderedProminent)
+                                .frame(maxWidth: .infinity, alignment: .center)
+                        }
+                    }
+                    .padding()
                 }
-
-                if visitor.signOutTime == nil {
-                    Button("Sign Out", action: signOutVisitor)
-                        .buttonStyle(.borderedProminent)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                }
+            } else {
+                ProgressView()
             }
-            .padding()
         }
-        .navigationTitle(visitor.fullName)
+        .navigationTitle(visitor?.fullName ?? "Visitor")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Edit") {
                     showingEditView = true
                 }
+                .disabled(visitor == nil)
             }
         }
         .sheet(isPresented: $showingEditView) {
-            NavigationStack {
-                EditVisitorView(visitor: visitor)
+            if let visitor {
+                NavigationStack {
+                    EditVisitorView(visitor: visitor) { updatedVisitor in
+                        self.visitor = updatedVisitor
+                    }
+                }
             }
         }
+        .onAppear(perform: loadVisitor)
     }
 
-    private var notesText: String {
+    private func notesText(for visitor: VisitorRecordDTO) -> String {
         let trimmedNotes = visitor.notes?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return trimmedNotes.isEmpty ? "None" : trimmedNotes
     }
 
-    private var locationText: String {
+    private func locationText(for visitor: VisitorRecordDTO) -> String {
         guard let latitude = visitor.latitude, let longitude = visitor.longitude else {
             return "Location not captured"
         }
 
         return "Lat: \(formattedCoordinate(latitude)), Lon: \(formattedCoordinate(longitude))"
-    }
-
-    @ViewBuilder
-    private var photoView: some View {
-        if let photoData = visitor.photoData,
-           let image = UIImage(data: photoData) {
-            Image(uiImage: image)
-                .resizable()
-                .scaledToFill()
-                .frame(width: 140, height: 140)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-        } else {
-            Image(systemName: "person.crop.rectangle")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 80, height: 80)
-                .foregroundStyle(.secondary)
-                .frame(width: 140, height: 140)
-                .background(Color(.secondarySystemBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-        }
     }
 
     private func detailRow(title: String, value: String) -> some View {
@@ -111,36 +97,46 @@ struct VisitorDetailView: View {
     }
 
     private func signOutVisitor() {
-        visitor.signOutTime = Date()
-
         do {
-            try modelContext.save()
+            visitor = try visitorRepository.signOutVisitor(id: visitorId)
         } catch {
             print("Failed to sign out visitor: \(error)")
+        }
+    }
+
+    private func loadVisitor() {
+        do {
+            visitor = try visitorRepository.fetchVisitor(id: visitorId)
+        } catch {
+            print("Failed to load visitor: \(error)")
         }
     }
 
     private func formattedCoordinate(_ value: Double) -> String {
         String(format: "%.5f", value)
     }
+
+    private func syncStatusText(for status: VisitorRecordSyncStatus) -> String {
+        switch status {
+        case .localOnly:
+            return "Local only"
+        case .pendingUpload:
+            return "Pending upload"
+        case .synced:
+            return "Synced"
+        case .modified:
+            return "Modified"
+        case .syncError:
+            return "Sync error"
+        }
+    }
 }
 
 #Preview {
     NavigationStack {
-        VisitorDetailView(
-            visitor: Visitor(
-                siteId: "escalante",
-                fullName: "Jordan Lee",
-                company: "Acme Industrial",
-                phoneNumber: "555-0101",
-                hostName: "Taylor Smith",
-                siteName: "North Plant",
-                visitReason: "Equipment inspection",
-                safetyBriefingCompleted: true,
-                escorted: true,
-                notes: "Wearing required PPE."
-            )
-        )
+        VisitorDetailView(visitorId: PreviewSampleData.detailPreviewVisitorId)
     }
+    .environment(\.visitorRepository, PreviewSampleData.visitorRepository)
+    .environmentObject(PreviewSampleData.syncService)
     .modelContainer(PreviewSampleData.container)
 }

@@ -23,6 +23,8 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
     @Published private(set) var longitude: Double?
 
     private let manager = CLLocationManager()
+    private var hasReceivedAuthorizationUpdate = false
+    private var shouldPrepareLocation = false
 
     override init() {
         super.init()
@@ -30,37 +32,43 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
         manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
     }
 
-    func prepare() {
-        let authorizationStatus = manager.authorizationStatus
+    func prepareLocation() {
+        shouldPrepareLocation = true
+        status = .checking
 
-        switch authorizationStatus {
-        case .notDetermined:
-            status = .checking
-            manager.requestWhenInUseAuthorization()
-        case .authorizedAlways, .authorizedWhenInUse:
-            requestLocation()
-        case .denied, .restricted:
-            status = .denied
-        @unknown default:
-            status = .unavailable
+        if hasReceivedAuthorizationUpdate {
+            handleAuthorizationStatus(manager.authorizationStatus)
         }
     }
 
-    func requestLocation() {
-        guard CLLocationManager.locationServicesEnabled() else {
+    private func handleAuthorizationStatus(_ authorizationStatus: CLAuthorizationStatus) {
+        switch authorizationStatus {
+        case .notDetermined:
+            if shouldPrepareLocation {
+                manager.requestWhenInUseAuthorization()
+            }
+        case .authorizedAlways, .authorizedWhenInUse:
+            guard shouldPrepareLocation else {
+                if latitude != nil && longitude != nil {
+                    status = .ready
+                }
+                return
+            }
+
+            shouldPrepareLocation = false
+            status = .checking
+            manager.requestLocation()
+        case .denied, .restricted:
+            shouldPrepareLocation = false
+            status = .denied
+            latitude = nil
+            longitude = nil
+        @unknown default:
+            shouldPrepareLocation = false
             status = .unavailable
-            return
+            latitude = nil
+            longitude = nil
         }
-
-        let authorizationStatus = manager.authorizationStatus
-
-        guard authorizationStatus == .authorizedAlways || authorizationStatus == .authorizedWhenInUse else {
-            prepare()
-            return
-        }
-
-        status = .checking
-        manager.requestLocation()
     }
 
     var statusText: String {
@@ -83,20 +91,8 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
     }
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        let authorizationStatus = manager.authorizationStatus
-
-        switch authorizationStatus {
-        case .authorizedAlways, .authorizedWhenInUse:
-            requestLocation()
-        case .denied, .restricted:
-            status = .denied
-            latitude = nil
-            longitude = nil
-        case .notDetermined:
-            status = .checking
-        @unknown default:
-            status = .unavailable
-        }
+        hasReceivedAuthorizationUpdate = true
+        handleAuthorizationStatus(manager.authorizationStatus)
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {

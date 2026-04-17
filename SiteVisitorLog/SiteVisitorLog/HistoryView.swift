@@ -7,27 +7,14 @@
 
 import SwiftUI
 import SwiftData
-import UIKit
 
 struct HistoryView: View {
+    @Environment(\.visitorRepository) private var visitorRepository
     let selectedSiteId: String
     @State private var searchText = ""
+    @State private var historyVisitors: [VisitorRecordDTO] = []
 
-    @Query private var historyVisitors: [Visitor]
-
-    init(selectedSiteId: String) {
-        self.selectedSiteId = selectedSiteId
-        let siteId = selectedSiteId
-
-        _historyVisitors = Query(
-            filter: #Predicate<Visitor> { visitor in
-                visitor.signOutTime != nil && visitor.siteId == siteId
-            },
-            sort: [SortDescriptor(\Visitor.signOutTime, order: .reverse)]
-        )
-    }
-
-    private var filteredVisitors: [Visitor] {
+    private var filteredVisitors: [VisitorRecordDTO] {
         let trimmedSearch = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !trimmedSearch.isEmpty else {
@@ -43,53 +30,37 @@ struct HistoryView: View {
     var body: some View {
         List(filteredVisitors) { visitor in
             NavigationLink {
-                VisitorDetailView(visitor: visitor)
+                VisitorDetailView(visitorId: visitor.id)
             } label: {
-                HStack(alignment: .top, spacing: 12) {
-                    photoThumbnail(for: visitor)
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(visitor.fullName)
-                            .font(.headline)
-                        Text(visitor.company)
-                        Text(visitor.siteName)
-                            .foregroundStyle(.secondary)
-                        Text("Signed In: \(visitor.signInTime, format: .dateTime.month().day().year().hour().minute())")
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(visitor.fullName)
+                        .font(.headline)
+                    Text(visitor.company)
+                    Text(visitor.siteName)
+                        .foregroundStyle(.secondary)
+                    Text("Signed In: \(visitor.signInTime, format: .dateTime.month().day().year().hour().minute())")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    if let signOutTime = visitor.signOutTime {
+                        Text("Signed Out: \(signOutTime, format: .dateTime.month().day().year().hour().minute())")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                        if let signOutTime = visitor.signOutTime {
-                            Text("Signed Out: \(signOutTime, format: .dateTime.month().day().year().hour().minute())")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(.vertical, 4)
         }
         .searchable(text: $searchText, prompt: "Search name or company")
         .navigationTitle("History")
+        .onAppear(perform: loadVisitors)
     }
 
-    @ViewBuilder
-    private func photoThumbnail(for visitor: Visitor) -> some View {
-        if let photoData = visitor.photoData,
-           let image = UIImage(data: photoData) {
-            Image(uiImage: image)
-                .resizable()
-                .scaledToFill()
-                .frame(width: 52, height: 52)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-        } else {
-            Image(systemName: "person.crop.square")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 28, height: 28)
-                .foregroundStyle(.secondary)
-                .frame(width: 52, height: 52)
-                .background(Color(.secondarySystemBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 10))
+    private func loadVisitors() {
+        do {
+            historyVisitors = try visitorRepository.fetchVisitorHistory(for: selectedSiteId)
+        } catch {
+            print("Failed to load visitor history: \(error)")
         }
     }
 }
@@ -98,5 +69,6 @@ struct HistoryView: View {
     NavigationStack {
         HistoryView(selectedSiteId: "escalante")
     }
+    .environment(\.visitorRepository, PreviewSampleData.visitorRepository)
     .modelContainer(PreviewSampleData.container)
 }

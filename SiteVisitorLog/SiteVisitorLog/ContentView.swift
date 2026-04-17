@@ -9,6 +9,7 @@ import SwiftUI
 import SwiftData
 
 struct ContentView: View {
+    @EnvironmentObject private var syncService: VisitorSyncService
     @AppStorage(SiteSelectionStorageKeys.selectedSiteId) private var selectedSiteId = ""
     @AppStorage(SiteSelectionStorageKeys.selectedSiteName) private var selectedSiteName = ""
 
@@ -56,6 +57,42 @@ struct ContentView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                         .shadow(color: Color.black.opacity(0.05), radius: 12, x: 0, y: 4)
 
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Sync")
+                                        .font(.caption)
+                                        .fontWeight(.semibold)
+                                        .textCase(.uppercase)
+                                        .foregroundStyle(.secondary)
+                                    Text(syncSummaryText)
+                                        .font(.subheadline)
+                                        .foregroundStyle(Color.secondaryNavy)
+                                }
+
+                                Spacer()
+
+                                Button(syncService.isSyncing ? "Syncing..." : "Sync Now") {
+                                    Task {
+                                        await syncService.syncPendingVisitors()
+                                    }
+                                }
+                                .buttonStyle(.bordered)
+                                .disabled(syncService.isSyncing)
+                            }
+
+                            if let lastSyncAttemptAt = syncService.lastSyncAttemptAt {
+                                Text("Last attempt: \(lastSyncAttemptAt, format: .dateTime.month().day().hour().minute())")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(16)
+                        .background(Color.white.opacity(0.92))
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 3)
+
                         VStack(spacing: 10) {
                             NavigationLink {
                                 SignInView()
@@ -96,10 +133,26 @@ struct ContentView: View {
                 }
             }
         }
+        .task {
+            syncService.refreshPendingSyncCount()
+        }
+    }
+
+    private var syncSummaryText: String {
+        if syncService.pendingSyncCount == 0 {
+            return "All visitor records are synced"
+        }
+
+        if syncService.pendingSyncCount == 1 {
+            return "1 visitor record pending sync"
+        }
+
+        return "\(syncService.pendingSyncCount) visitor records pending sync"
     }
 }
 
 #Preview {
     ContentView()
+        .environmentObject(PreviewSampleData.syncService)
         .modelContainer(PreviewSampleData.container)
 }

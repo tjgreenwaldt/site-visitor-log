@@ -10,10 +10,14 @@ import SwiftData
 
 @main
 struct SiteVisitorLogApp: App {
-    var sharedModelContainer: ModelContainer = {
+    private let sharedModelContainer: ModelContainer
+    @StateObject private var syncService: VisitorSyncService
+
+    init() {
+        let sharedModelContainer = {
         let schema = Schema([
             Item.self,
-            Visitor.self,
+            VisitorRecordEntity.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
@@ -22,11 +26,18 @@ struct SiteVisitorLogApp: App {
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
         }
-    }()
+        }()
+
+        self.sharedModelContainer = sharedModelContainer
+        let repository = SwiftDataVisitorRepository(modelContext: sharedModelContainer.mainContext)
+        _syncService = StateObject(wrappedValue: VisitorSyncService(repository: repository))
+    }
 
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environment(\.visitorRepository, SwiftDataVisitorRepository(modelContext: sharedModelContainer.mainContext))
+                .environmentObject(syncService)
         }
         .modelContainer(sharedModelContainer)
     }
