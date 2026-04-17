@@ -123,7 +123,7 @@ final class SwiftDataVisitorRepository: VisitorRepository {
         )
 
         return try modelContext.fetch(descriptor)
-            .filter { $0.syncStatus.needsSync }
+            .filter { $0.syncStatus == .pendingUpload || $0.syncStatus == .modified || $0.syncStatus == .syncError }
             .map(\.dto)
     }
 
@@ -135,11 +135,11 @@ final class SwiftDataVisitorRepository: VisitorRepository {
         return entity.dto
     }
 
-    func markSyncSuccess(id: UUID, remoteId: String?) throws -> VisitorRecordDTO {
+    func markSyncSuccess(id: UUID, remoteId: String?, updatedAt: Date) throws -> VisitorRecordDTO {
         let entity = try fetchEntity(id: id)
         entity.remoteId = remoteId ?? entity.remoteId ?? "mock-\(entity.localId.uuidString.lowercased())"
         entity.syncStatus = .synced
-        entity.updatedAt = Date()
+        entity.updatedAt = updatedAt
         try save()
         return entity.dto
     }
@@ -152,18 +152,82 @@ final class SwiftDataVisitorRepository: VisitorRepository {
         return entity.dto
     }
 
-    private func fetchEntity(id: UUID) throws -> VisitorRecordEntity {
-        let descriptor = FetchDescriptor<VisitorRecordEntity>(
-            predicate: #Predicate { entity in
-                entity.localId == id
+    func upsertRemoteVisitor(_ visitor: VisitorRecordDTO) throws -> VisitorRecordDTO {
+        if let remoteId = visitor.remoteId, let entity = try fetchEntity(remoteId: remoteId) {
+            guard visitor.updatedAt >= entity.updatedAt else {
+                return entity.dto
             }
+
+            applyRemote(visitor, to: entity)
+            try save()
+            return entity.dto
+        }
+
+        if let entity = try fetchEntity(localId: visitor.localId) {
+            guard visitor.updatedAt >= entity.updatedAt else {
+                return entity.dto
+            }
+
+            applyRemote(visitor, to: entity)
+            try save()
+            return entity.dto
+        }
+
+        let remoteVisitor = VisitorRecordDTO(
+            localId: visitor.localId,
+            remoteId: visitor.remoteId,
+            siteId: visitor.siteId,
+            fullName: visitor.fullName,
+            company: visitor.company,
+            phoneNumber: visitor.phoneNumber,
+            hostName: visitor.hostName,
+            siteName: visitor.siteName,
+            visitReason: visitor.visitReason,
+            signInTime: visitor.signInTime,
+            signOutTime: visitor.signOutTime,
+            safetyBriefingCompleted: visitor.safetyBriefingCompleted,
+            escorted: visitor.escorted,
+            notes: visitor.notes,
+            latitude: visitor.latitude,
+            longitude: visitor.longitude,
+            createdAt: visitor.createdAt,
+            updatedAt: visitor.updatedAt,
+            syncStatus: .synced,
+            deviceId: visitor.deviceId
         )
 
-        guard let entity = try modelContext.fetch(descriptor).first else {
+        let entity = VisitorRecordEntity(dto: remoteVisitor)
+        modelContext.insert(entity)
+        try save()
+        return entity.dto
+    }
+
+    private func fetchEntity(id: UUID) throws -> VisitorRecordEntity {
+        guard let entity = try fetchEntity(localId: id) else {
             throw VisitorRepositoryError.visitorNotFound
         }
 
         return entity
+    }
+
+    private func fetchEntity(localId: UUID) throws -> VisitorRecordEntity? {
+        let descriptor = FetchDescriptor<VisitorRecordEntity>(
+            predicate: #Predicate { entity in
+                entity.localId == localId
+            }
+        )
+
+        return try modelContext.fetch(descriptor).first
+    }
+
+    private func fetchEntity(remoteId: String) throws -> VisitorRecordEntity? {
+        let descriptor = FetchDescriptor<VisitorRecordEntity>(
+            predicate: #Predicate { entity in
+                entity.remoteId == remoteId
+            }
+        )
+
+        return try modelContext.fetch(descriptor).first
     }
 
     private func mutationSyncStatus(for entity: VisitorRecordEntity) -> VisitorRecordSyncStatus {
@@ -194,5 +258,27 @@ final class SwiftDataVisitorRepository: VisitorRepository {
     private func save() throws {
         try modelContext.save()
         NotificationCenter.default.post(name: .visitorRecordsDidChange, object: nil)
+    }
+
+    private func applyRemote(_ visitor: VisitorRecordDTO, to entity: VisitorRecordEntity) {
+        entity.remoteId = visitor.remoteId
+        entity.siteId = visitor.siteId
+        entity.fullName = visitor.fullName
+        entity.company = visitor.company
+        entity.phoneNumber = visitor.phoneNumber
+        entity.hostName = visitor.hostName
+        entity.siteName = visitor.siteName
+        entity.visitReason = visitor.visitReason
+        entity.signInTime = visitor.signInTime
+        entity.signOutTime = visitor.signOutTime
+        entity.safetyBriefingCompleted = visitor.safetyBriefingCompleted
+        entity.escorted = visitor.escorted
+        entity.notes = visitor.notes
+        entity.latitude = visitor.latitude
+        entity.longitude = visitor.longitude
+        entity.createdAt = visitor.createdAt
+        entity.updatedAt = visitor.updatedAt
+        entity.syncStatus = .synced
+        entity.deviceId = visitor.deviceId
     }
 }

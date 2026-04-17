@@ -83,9 +83,21 @@ struct ContentView: View {
                             }
 
                             if let lastSyncAttemptAt = syncService.lastSyncAttemptAt {
-                                Text("Last attempt: \(lastSyncAttemptAt, format: .dateTime.month().day().hour().minute())")
+                                if let lastSuccessfulSyncAt = syncService.lastSuccessfulSyncAt {
+                                    Text("Last successful sync: \(lastSuccessfulSyncAt, format: .dateTime.month().day().hour().minute())")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                } else {
+                                    Text("Last attempt: \(lastSyncAttemptAt, format: .dateTime.month().day().hour().minute())")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+
+                            if let lastSyncError = syncService.lastSyncError {
+                                Text(lastSyncError)
                                     .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(.red)
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -143,6 +155,14 @@ struct ContentView: View {
     }
 
     private var syncSummaryText: String {
+        if syncService.isSyncing {
+            return "Sync in progress"
+        }
+
+        if let _ = syncService.lastSyncError, syncService.pendingSyncCount > 0 {
+            return "\(syncService.pendingSyncCount) visitor records pending retry"
+        }
+
         if syncService.pendingSyncCount == 0 {
             return "All visitor records are synced"
         }

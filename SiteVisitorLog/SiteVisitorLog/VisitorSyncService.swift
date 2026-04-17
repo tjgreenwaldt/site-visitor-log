@@ -6,13 +6,17 @@ import Combine
 final class VisitorSyncService: ObservableObject {
     @Published private(set) var pendingSyncCount = 0
     @Published private(set) var lastSyncAttemptAt: Date?
+    @Published private(set) var lastSuccessfulSyncAt: Date?
     @Published private(set) var isSyncing = false
+    @Published private(set) var lastSyncError: String?
 
     private let repository: any VisitorRepository
+    private let remoteDataSource: any VisitorRemoteDataSource
     private var changeObserver: NSObjectProtocol?
 
-    init(repository: any VisitorRepository) {
+    init(repository: any VisitorRepository, remoteDataSource: any VisitorRemoteDataSource) {
         self.repository = repository
+        self.remoteDataSource = remoteDataSource
         changeObserver = NotificationCenter.default.addObserver(
             forName: .visitorRecordsDidChange,
             object: nil,
@@ -45,30 +49,44 @@ final class VisitorSyncService: ObservableObject {
 
         isSyncing = true
         lastSyncAttemptAt = Date()
+        lastSyncError = nil
         defer {
             isSyncing = false
             refreshPendingSyncCount()
         }
 
         do {
-            let pendingVisitors = try repository.fetchVisitorsNeedingSync()
-
-            for visitor in pendingVisitors {
-                do {
-                    _ = try repository.markSyncStatus(id: visitor.id, status: .pendingUpload)
-                    try await Task.sleep(for: .milliseconds(350))
-                    let remoteId = visitor.remoteId ?? "mock-\(visitor.id.uuidString.lowercased())"
-                    _ = try repository.markSyncSuccess(id: visitor.id, remoteId: remoteId)
-                } catch {
-                    do {
-                        _ = try repository.markSyncFailure(id: visitor.id)
-                    } catch {
-                        print("Failed to mark sync failure: \(error)")
-                    }
-                }
-            }
+            try await uploadPendingVisitors()
+            try await downloadRemoteChanges()
+            lastSuccessfulSyncAt = Date()
         } catch {
-            print("Failed to sync visitors: \(error)")
+            lastSyncError = error.localizedDescription
+        }
+    }
+
+    private func uploadPendingVisitors() async throws {
+        let pendingVisitors = try repository.fetchVisitorsNeedingSync()
+
+        for visitor in pendingVisitors {
+            do {
+                let canonicalVisitor = try await remoteDataSource.upload(visitor: visitor)
+                _ = try repository.markSyncSuccess(
+                    id: visitor.id,
+                    remoteId: canonicalVisitor.remoteId,
+                    updatedAt: canonicalVisitor.updatedAt
+                )
+            } catch {
+                _ = try? repository.markSyncFailure(id: visitor.id)
+                lastSyncError = error.localizedDescription
+            }
+        }
+    }
+
+    private func downloadRemoteChanges() async throws {
+        let remoteVisitors = try await remoteDataSource.fetchVisitorsChanged(since: lastSuccessfulSyncAt)
+
+        for remoteVisitor in remoteVisitors {
+            _ = try repository.upsertRemoteVisitor(remoteVisitor)
         }
     }
 }

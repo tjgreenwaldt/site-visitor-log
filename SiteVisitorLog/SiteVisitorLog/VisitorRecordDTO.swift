@@ -24,7 +24,7 @@ struct VisitorRecordDTO: Codable, Identifiable, Sendable {
 
     var id: UUID { localId }
 
-    init(
+    nonisolated init(
         localId: UUID = UUID(),
         remoteId: String? = nil,
         siteId: String,

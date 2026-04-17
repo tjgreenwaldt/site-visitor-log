@@ -12,8 +12,9 @@ protocol VisitorRepository {
     func fetchVisitor(id: UUID) throws -> VisitorRecordDTO?
     func fetchVisitorsNeedingSync() throws -> [VisitorRecordDTO]
     func markSyncStatus(id: UUID, status: VisitorRecordSyncStatus) throws -> VisitorRecordDTO
-    func markSyncSuccess(id: UUID, remoteId: String?) throws -> VisitorRecordDTO
+    func markSyncSuccess(id: UUID, remoteId: String?, updatedAt: Date) throws -> VisitorRecordDTO
     func markSyncFailure(id: UUID) throws -> VisitorRecordDTO
+    func upsertRemoteVisitor(_ visitor: VisitorRecordDTO) throws -> VisitorRecordDTO
 }
 
 enum VisitorRepositoryError: LocalizedError {
@@ -81,11 +82,15 @@ private final class PreviewVisitorRepository: VisitorRepository {
         try repository.markSyncStatus(id: id, status: status)
     }
 
-    func markSyncSuccess(id: UUID, remoteId: String?) throws -> VisitorRecordDTO {
-        try repository.markSyncSuccess(id: id, remoteId: remoteId)
+    func markSyncSuccess(id: UUID, remoteId: String?, updatedAt: Date) throws -> VisitorRecordDTO {
+        try repository.markSyncSuccess(id: id, remoteId: remoteId, updatedAt: updatedAt)
     }
 
     func markSyncFailure(id: UUID) throws -> VisitorRecordDTO {
         try repository.markSyncFailure(id: id)
+    }
+
+    func upsertRemoteVisitor(_ visitor: VisitorRecordDTO) throws -> VisitorRecordDTO {
+        try repository.upsertRemoteVisitor(visitor)
     }
 }

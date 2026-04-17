@@ -131,6 +131,6 @@ enum PreviewSampleData {
 
     @MainActor
     static var syncService: VisitorSyncService {
-        VisitorSyncService(repository: visitorRepository)
+        VisitorSyncService(repository: visitorRepository, remoteDataSource: MockVisitorRemoteDataSource())
     }
 }
