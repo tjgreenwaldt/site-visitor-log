@@ -24,6 +24,10 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		A10100062026041700000001 /* SiteVisitorLog/SiteSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteVisitorLog/SiteSource.swift; sourceTree = SOURCE_ROOT; };
+		A10100072026041700000001 /* SiteVisitorLog/SiteSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteVisitorLog/SiteSelectionView.swift; sourceTree = SOURCE_ROOT; };
+		A10100082026041700000001 /* SiteVisitorLog/Color+Brand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SiteVisitorLog/Color+Brand.swift"; sourceTree = SOURCE_ROOT; };
+		A10100092026041700000001 /* SiteVisitorLog/ButtonStyles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteVisitorLog/ButtonStyles.swift; sourceTree = SOURCE_ROOT; };
 		C872E2932F91E2170079AD85 /* SiteVisitorLog.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SiteVisitorLog.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C872E2A22F91E2180079AD85 /* SiteVisitorLogTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SiteVisitorLogTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C872E2AC2F91E2180079AD85 /* SiteVisitorLogUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SiteVisitorLogUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -72,6 +76,17 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		C8135BAA2F91FCAB001248A8 /* Recovered References */ = {
+			isa = PBXGroup;
+			children = (
+				A10100092026041700000001 /* SiteVisitorLog/ButtonStyles.swift */,
+				A10100082026041700000001 /* SiteVisitorLog/Color+Brand.swift */,
+				A10100072026041700000001 /* SiteVisitorLog/SiteSelectionView.swift */,
+				A10100062026041700000001 /* SiteVisitorLog/SiteSource.swift */,
+			);
+			name = "Recovered References";
+			sourceTree = "<group>";
+		};
 		C872E28A2F91E2170079AD85 = {
 			isa = PBXGroup;
 			children = (
@@ -79,6 +94,7 @@
 				C872E2A52F91E2180079AD85 /* SiteVisitorLogTests */,
 				C872E2AF2F91E2180079AD85 /* SiteVisitorLogUITests */,
 				C872E2942F91E2170079AD85 /* Products */,
+				C8135BAA2F91FCAB001248A8 /* Recovered References */,
 			);
 			sourceTree = "<group>";
 		};
@@ -396,6 +412,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SiteVisitorLog uses your location to save the sign-in coordinates for each visitor.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -440,6 +457,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SiteVisitorLog uses your location to save the sign-in coordinates for each visitor.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;

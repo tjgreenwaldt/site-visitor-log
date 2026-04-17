@@ -39,6 +39,7 @@ struct VisitorDetailView: View {
                     detailRow(title: "Safety Briefing", value: visitor.safetyBriefingCompleted ? "Completed" : "Not completed")
                     detailRow(title: "Escorted", value: visitor.escorted ? "Yes" : "No")
                     detailRow(title: "Notes", value: notesText)
+                    detailRow(title: "Location", value: locationText)
                 }
 
                 if visitor.signOutTime == nil {
@@ -68,6 +69,14 @@ struct VisitorDetailView: View {
     private var notesText: String {
         let trimmedNotes = visitor.notes?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return trimmedNotes.isEmpty ? "None" : trimmedNotes
+    }
+
+    private var locationText: String {
+        guard let latitude = visitor.latitude, let longitude = visitor.longitude else {
+            return "Location not captured"
+        }
+
+        return "Lat: \(formattedCoordinate(latitude)), Lon: \(formattedCoordinate(longitude))"
     }
 
     @ViewBuilder
@@ -110,12 +119,17 @@ struct VisitorDetailView: View {
             print("Failed to sign out visitor: \(error)")
         }
     }
+
+    private func formattedCoordinate(_ value: Double) -> String {
+        String(format: "%.5f", value)
+    }
 }
 
 #Preview {
     NavigationStack {
         VisitorDetailView(
             visitor: Visitor(
+                siteId: "escalante",
                 fullName: "Jordan Lee",
                 company: "Acme Industrial",
                 phoneNumber: "555-0101",

@@ -23,36 +23,43 @@ enum PreviewSampleData {
 
         let sampleVisitors = [
             Visitor(
+                siteId: "escalante",
                 fullName: "Jordan Lee",
                 company: "Acme Industrial",
                 phoneNumber: "555-0101",
                 hostName: "Taylor Smith",
-                siteName: "North Plant",
+                siteName: "Escalante",
                 visitReason: "Equipment inspection",
                 signInTime: now.addingTimeInterval(-1800),
                 safetyBriefingCompleted: true,
                 escorted: true,
-                notes: "Wearing required PPE."
+                notes: "Wearing required PPE.",
+                latitude: 32.22174,
+                longitude: -110.92648
             ),
             Visitor(
+                siteId: "escalante",
                 fullName: "Casey Nguyen",
                 company: "Blue River Logistics",
                 phoneNumber: "555-0102",
                 hostName: "Morgan Davis",
-                siteName: "Warehouse A",
+                siteName: "Escalante",
                 visitReason: "Delivery coordination",
                 signInTime: now.addingTimeInterval(-7200),
                 signOutTime: now.addingTimeInterval(-3600),
                 safetyBriefingCompleted: true,
                 escorted: false,
-                photoData: makePhotoData(systemName: "person.fill", color: .systemBlue)
+                photoData: makePhotoData(systemName: "person.fill", color: .systemBlue),
+                latitude: 33.44838,
+                longitude: -112.07404
             ),
             Visitor(
+                siteId: "escalante",
                 fullName: "Avery Patel",
                 company: "Summit Contractors",
                 phoneNumber: "555-0103",
                 hostName: "Jamie Cooper",
-                siteName: "South Gate",
+                siteName: "Escalante",
                 visitReason: "Site walkthrough",
                 signInTime: now.addingTimeInterval(-14400),
                 signOutTime: now.addingTimeInterval(-10800),
@@ -61,11 +68,12 @@ enum PreviewSampleData {
                 photoData: makePhotoData(systemName: "person.crop.circle.fill", color: .systemGreen)
             ),
             Visitor(
+                siteId: "swift-air-1",
                 fullName: "Riley Brooks",
                 company: "Northstar Power",
                 phoneNumber: "555-0104",
                 hostName: "Alex Morgan",
-                siteName: "Control Room",
+                siteName: "Swift Air 1",
                 visitReason: "Maintenance review",
                 signInTime: now.addingTimeInterval(-21600),
                 signOutTime: now.addingTimeInterval(-18000),
@@ -73,11 +81,12 @@ enum PreviewSampleData {
                 escorted: true
             ),
             Visitor(
+                siteId: "swift-air-1",
                 fullName: "Taylor Gomez",
                 company: "Riverbend Supply",
                 phoneNumber: "555-0105",
                 hostName: "Chris Reed",
-                siteName: "Loading Dock",
+                siteName: "Swift Air 1",
                 visitReason: "Parts delivery",
                 signInTime: now.addingTimeInterval(-28800),
                 signOutTime: now.addingTimeInterval(-25200),

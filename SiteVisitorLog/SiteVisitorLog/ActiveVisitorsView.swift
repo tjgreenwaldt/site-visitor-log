@@ -9,13 +9,21 @@ import SwiftUI
 import SwiftData
 
 struct ActiveVisitorsView: View {
-    @Query(
-        filter: #Predicate<Visitor> { visitor in
-            visitor.signOutTime == nil
-        },
-        sort: \Visitor.signInTime,
-        order: .reverse
-    ) private var activeVisitors: [Visitor]
+    let selectedSiteId: String
+
+    @Query private var activeVisitors: [Visitor]
+
+    init(selectedSiteId: String) {
+        self.selectedSiteId = selectedSiteId
+        let siteId = selectedSiteId
+
+        _activeVisitors = Query(
+            filter: #Predicate<Visitor> { visitor in
+                visitor.signOutTime == nil && visitor.siteId == siteId
+            },
+            sort: [SortDescriptor(\Visitor.signInTime, order: .reverse)]
+        )
+    }
 
     var body: some View {
         List {
@@ -43,7 +51,7 @@ struct ActiveVisitorsView: View {
 
 #Preview {
     NavigationStack {
-        ActiveVisitorsView()
+        ActiveVisitorsView(selectedSiteId: "escalante")
     }
     .modelContainer(PreviewSampleData.container)
 }

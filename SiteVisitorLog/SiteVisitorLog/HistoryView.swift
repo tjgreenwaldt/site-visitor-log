@@ -10,15 +10,22 @@ import SwiftData
 import UIKit
 
 struct HistoryView: View {
+    let selectedSiteId: String
     @State private var searchText = ""
 
-    @Query(
-        filter: #Predicate<Visitor> { visitor in
-            visitor.signOutTime != nil
-        },
-        sort: \Visitor.signOutTime,
-        order: .reverse
-    ) private var historyVisitors: [Visitor]
+    @Query private var historyVisitors: [Visitor]
+
+    init(selectedSiteId: String) {
+        self.selectedSiteId = selectedSiteId
+        let siteId = selectedSiteId
+
+        _historyVisitors = Query(
+            filter: #Predicate<Visitor> { visitor in
+                visitor.signOutTime != nil && visitor.siteId == siteId
+            },
+            sort: [SortDescriptor(\Visitor.signOutTime, order: .reverse)]
+        )
+    }
 
     private var filteredVisitors: [Visitor] {
         let trimmedSearch = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -89,7 +96,7 @@ struct HistoryView: View {
 
 #Preview {
     NavigationStack {
-        HistoryView()
+        HistoryView(selectedSiteId: "escalante")
     }
     .modelContainer(PreviewSampleData.container)
 }

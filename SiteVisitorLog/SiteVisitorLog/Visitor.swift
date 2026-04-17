@@ -11,6 +11,7 @@ import SwiftData
 @Model
 final class Visitor {
     @Attribute(.unique) var id: UUID
+    var siteId: String
     var fullName: String
     var company: String
     var phoneNumber: String
@@ -23,9 +24,12 @@ final class Visitor {
     var escorted: Bool
     var notes: String?
     var photoData: Data?
+    var latitude: Double?
+    var longitude: Double?
 
     init(
         id: UUID = UUID(),
+        siteId: String,
         fullName: String,
         company: String,
         phoneNumber: String,
@@ -37,9 +41,12 @@ final class Visitor {
         safetyBriefingCompleted: Bool,
         escorted: Bool,
         notes: String? = nil,
-        photoData: Data? = nil
+        photoData: Data? = nil,
+        latitude: Double? = nil,
+        longitude: Double? = nil
     ) {
         self.id = id
+        self.siteId = siteId
         self.fullName = fullName
         self.company = company
         self.phoneNumber = phoneNumber
@@ -52,5 +59,7 @@ final class Visitor {
         self.escorted = escorted
         self.notes = notes
         self.photoData = photoData
+        self.latitude = latitude
+        self.longitude = longitude
     }
 }

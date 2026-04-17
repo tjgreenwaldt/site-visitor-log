@@ -9,15 +9,18 @@ import SwiftUI
 import SwiftData
 import PhotosUI
 import UIKit
+import CoreLocation
 
 struct SignInView: View {
     @Environment(\.modelContext) private var modelContext
+    @AppStorage(SiteSelectionStorageKeys.selectedSiteId) private var selectedSiteId = ""
+    @AppStorage(SiteSelectionStorageKeys.selectedSiteName) private var selectedSiteName = ""
+    @StateObject private var locationManager = LocationManager()
 
     @State private var fullName = ""
     @State private var company = ""
     @State private var phoneNumber = ""
     @State private var hostName = ""
-    @State private var siteName = ""
     @State private var visitReason = ""
     @State private var safetyBriefingCompleted = false
     @State private var escorted = false
@@ -28,14 +31,24 @@ struct SignInView: View {
     @State private var showingCameraUnavailableAlert = false
 
     private var canSave: Bool {
+        !selectedSiteId.isEmpty &&
         !fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         !company.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-        !hostName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-        !siteName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !hostName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     var body: some View {
         Form {
+            Section("Current Site") {
+                Text(selectedSiteName.isEmpty ? "No site selected" : selectedSiteName)
+                    .foregroundStyle(selectedSiteName.isEmpty ? .secondary : .primary)
+            }
+
+            Section("Location Status") {
+                Text(locationManager.statusText)
+                    .foregroundStyle(locationStatusColor)
+            }
+
             Section("Visitor Photo") {
                 HStack {
                     Spacer()
@@ -54,7 +67,6 @@ struct SignInView: View {
                 TextField("Full name", text: $fullName, prompt: Text("Enter visitor name"))
                 TextField("Company", text: $company, prompt: Text("Enter company name"))
                 TextField("Host name", text: $hostName, prompt: Text("Enter host name"))
-                TextField("Site name", text: $siteName, prompt: Text("Enter site name"))
             }
 
             Section("Visit Details") {
@@ -87,6 +99,9 @@ struct SignInView: View {
         } message: {
             Text("This device does not have a camera available.")
         }
+        .task {
+            locationManager.prepare()
+        }
         .task(id: selectedPhotoItem) {
             await loadSelectedPhoto()
         }
@@ -95,16 +110,19 @@ struct SignInView: View {
     private func saveVisitor() {
         let trimmedNotes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
         let visitor = Visitor(
+            siteId: selectedSiteId,
             fullName: fullName.trimmingCharacters(in: .whitespacesAndNewlines),
             company: company.trimmingCharacters(in: .whitespacesAndNewlines),
             phoneNumber: phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines),
             hostName: hostName.trimmingCharacters(in: .whitespacesAndNewlines),
-            siteName: siteName.trimmingCharacters(in: .whitespacesAndNewlines),
+            siteName: selectedSiteName,
             visitReason: visitReason.trimmingCharacters(in: .whitespacesAndNewlines),
             safetyBriefingCompleted: safetyBriefingCompleted,
             escorted: escorted,
             notes: trimmedNotes.isEmpty ? nil : trimmedNotes,
-            photoData: selectedPhotoImage?.jpegData(compressionQuality: 0.7)
+            photoData: selectedPhotoImage?.jpegData(compressionQuality: 0.7),
+            latitude: locationManager.latitude,
+            longitude: locationManager.longitude
         )
 
         modelContext.insert(visitor)
@@ -116,13 +134,24 @@ struct SignInView: View {
         company = ""
         phoneNumber = ""
         hostName = ""
-        siteName = ""
         visitReason = ""
         safetyBriefingCompleted = false
         escorted = false
         notes = ""
         selectedPhotoItem = nil
         selectedPhotoImage = nil
+        locationManager.requestLocation()
+    }
+
+    private var locationStatusColor: Color {
+        switch locationManager.status {
+        case .ready:
+            return .secondaryNavy
+        case .checking:
+            return .secondary
+        case .unavailable, .denied:
+            return .secondary
+        }
     }
 
     @ViewBuilder

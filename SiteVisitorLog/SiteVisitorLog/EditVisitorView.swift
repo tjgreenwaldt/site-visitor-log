@@ -20,7 +20,6 @@ struct EditVisitorView: View {
     @State private var company: String
     @State private var phoneNumber: String
     @State private var hostName: String
-    @State private var siteName: String
     @State private var visitReason: String
     @State private var safetyBriefingCompleted: Bool
     @State private var escorted: Bool
@@ -36,7 +35,6 @@ struct EditVisitorView: View {
         _company = State(initialValue: visitor.company)
         _phoneNumber = State(initialValue: visitor.phoneNumber)
         _hostName = State(initialValue: visitor.hostName)
-        _siteName = State(initialValue: visitor.siteName)
         _visitReason = State(initialValue: visitor.visitReason)
         _safetyBriefingCompleted = State(initialValue: visitor.safetyBriefingCompleted)
         _escorted = State(initialValue: visitor.escorted)
@@ -47,8 +45,7 @@ struct EditVisitorView: View {
     private var canSave: Bool {
         !fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         !company.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-        !hostName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-        !siteName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !hostName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     var body: some View {
@@ -78,7 +75,10 @@ struct EditVisitorView: View {
                 TextField("Full name", text: $fullName, prompt: Text("Enter visitor name"))
                 TextField("Company", text: $company, prompt: Text("Enter company name"))
                 TextField("Host name", text: $hostName, prompt: Text("Enter host name"))
-                TextField("Site name", text: $siteName, prompt: Text("Enter site name"))
+            }
+
+            Section("Current Site") {
+                Text(visitor.siteName)
             }
 
             Section("Visit Details") {
@@ -130,7 +130,6 @@ struct EditVisitorView: View {
         visitor.company = company.trimmingCharacters(in: .whitespacesAndNewlines)
         visitor.phoneNumber = phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines)
         visitor.hostName = hostName.trimmingCharacters(in: .whitespacesAndNewlines)
-        visitor.siteName = siteName.trimmingCharacters(in: .whitespacesAndNewlines)
         visitor.visitReason = visitReason.trimmingCharacters(in: .whitespacesAndNewlines)
         visitor.safetyBriefingCompleted = safetyBriefingCompleted
         visitor.escorted = escorted
@@ -203,6 +202,7 @@ struct EditVisitorView: View {
     NavigationStack {
         EditVisitorView(
             visitor: Visitor(
+                siteId: "escalante",
                 fullName: "Jordan Lee",
                 company: "Acme Industrial",
                 phoneNumber: "555-0101",
