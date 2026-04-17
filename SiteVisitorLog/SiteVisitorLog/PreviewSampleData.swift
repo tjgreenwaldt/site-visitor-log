@@ -129,8 +129,21 @@ enum PreviewSampleData {
         SwiftDataVisitorRepository(modelContext: container.mainContext)
     }
 
+    static var siteCatalogService: SiteCatalogService {
+        SiteCatalogService(
+            modelContext: container.mainContext,
+            remoteDataSource: PreviewSiteRemoteDataSource()
+        )
+    }
+
     @MainActor
     static var syncService: VisitorSyncService {
         VisitorSyncService(repository: visitorRepository, remoteDataSource: MockVisitorRemoteDataSource())
+    }
+}
+
+private struct PreviewSiteRemoteDataSource: SiteRemoteDataSource {
+    func fetchSites() async throws -> [SiteDTO] {
+        []
     }
 }

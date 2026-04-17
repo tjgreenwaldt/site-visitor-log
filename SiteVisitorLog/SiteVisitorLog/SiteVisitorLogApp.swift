@@ -12,6 +12,7 @@ import SwiftData
 struct SiteVisitorLogApp: App {
     private let sharedModelContainer: ModelContainer
     @StateObject private var syncService: VisitorSyncService
+    @StateObject private var siteCatalogService: SiteCatalogService
 
     init() {
         let sharedModelContainer = {
@@ -30,10 +31,15 @@ struct SiteVisitorLogApp: App {
         }()
 
         self.sharedModelContainer = sharedModelContainer
-        SiteSource.seedSitesIfNeeded(in: sharedModelContainer.mainContext)
         let repository = SwiftDataVisitorRepository(modelContext: sharedModelContainer.mainContext)
         let remoteDataSource = VisitorRemoteDataSourceProvider.make()
         _syncService = StateObject(wrappedValue: VisitorSyncService(repository: repository, remoteDataSource: remoteDataSource))
+        _siteCatalogService = StateObject(
+            wrappedValue: SiteCatalogService(
+                modelContext: sharedModelContainer.mainContext,
+                remoteDataSource: SupabaseSiteRemoteDataSource()
+            )
+        )
     }
 
     var body: some Scene {
@@ -41,6 +47,7 @@ struct SiteVisitorLogApp: App {
             ContentView()
                 .environment(\.visitorRepository, SwiftDataVisitorRepository(modelContext: sharedModelContainer.mainContext))
                 .environmentObject(syncService)
+                .environmentObject(siteCatalogService)
         }
         .modelContainer(sharedModelContainer)
     }

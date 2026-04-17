@@ -11,6 +11,7 @@ import SwiftData
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var syncService: VisitorSyncService
+    @EnvironmentObject private var siteCatalogService: SiteCatalogService
     @AppStorage(SiteSelectionStorageKeys.selectedSiteId) private var selectedSiteId = ""
     @AppStorage(SiteSelectionStorageKeys.selectedSiteName) private var selectedSiteName = ""
 
@@ -180,6 +181,8 @@ struct ContentView: View {
         }
         .task {
             syncService.refreshPendingSyncCount()
+            await siteCatalogService.refreshSites()
+            refreshSelectedSite()
         }
         .task(id: selectedSiteId) {
             refreshSelectedSite()
@@ -261,5 +264,6 @@ struct ContentView: View {
 #Preview {
     ContentView()
         .environmentObject(PreviewSampleData.syncService)
+        .environmentObject(PreviewSampleData.siteCatalogService)
         .modelContainer(PreviewSampleData.container)
 }

@@ -49,7 +49,7 @@ struct SiteSelectionView: View {
                         ContentUnavailableView(
                             "No Active Sites",
                             systemImage: "building.2.crop.circle",
-                            description: Text("Add or reactivate a site to continue.")
+                            description: Text("No active sites are currently available.")
                         )
                     } else {
                         VStack(spacing: 14) {
@@ -79,13 +79,6 @@ struct SiteSelectionView: View {
         }
         .navigationTitle("Sites")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                NavigationLink("Manage") {
-                    SiteManagementView()
-                }
-            }
-        }
     }
 }
 
