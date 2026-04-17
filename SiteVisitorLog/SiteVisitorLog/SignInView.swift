@@ -45,8 +45,14 @@ struct SignInView: View {
             }
 
             Section("Location Status") {
-                Text(locationManager.statusText)
-                    .foregroundStyle(locationStatusColor)
+                HStack(spacing: 10) {
+                    Circle()
+                        .fill(locationStatusColor)
+                        .frame(width: 12, height: 12)
+
+                    Text("Location")
+                        .foregroundStyle(.primary)
+                }
             }
 
             Section("Visitor Photo") {
@@ -146,11 +152,11 @@ struct SignInView: View {
     private var locationStatusColor: Color {
         switch locationManager.status {
         case .ready:
-            return .secondaryNavy
+            return .green
         case .checking:
-            return .secondary
+            return .yellow
         case .unavailable, .denied:
-            return .secondary
+            return .red
         }
     }
 
