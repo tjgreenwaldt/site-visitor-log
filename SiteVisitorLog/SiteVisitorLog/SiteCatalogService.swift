@@ -4,6 +4,9 @@ import SwiftData
 
 @MainActor
 final class SiteCatalogService: ObservableObject {
+    @Published private(set) var isRefreshing = false
+    @Published private(set) var lastRefreshError: String?
+
     private let modelContext: ModelContext
     private let remoteDataSource: any SiteRemoteDataSource
 
@@ -13,10 +16,17 @@ final class SiteCatalogService: ObservableObject {
     }
 
     func refreshSites() async {
+        guard !isRefreshing else { return }
+
+        isRefreshing = true
+        lastRefreshError = nil
+        defer { isRefreshing = false }
+
         do {
             let remoteSites = try await remoteDataSource.fetchSites()
             try cache(remoteSites)
         } catch {
+            lastRefreshError = error.localizedDescription
             print("Failed to refresh sites: \(error)")
         }
     }

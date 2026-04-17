@@ -9,6 +9,7 @@ import SwiftUI
 import SwiftData
 
 struct SiteSelectionView: View {
+    @EnvironmentObject private var siteCatalogService: SiteCatalogService
     @AppStorage(SiteSelectionStorageKeys.selectedSiteId) private var selectedSiteId = ""
     @AppStorage(SiteSelectionStorageKeys.selectedSiteName) private var selectedSiteName = ""
     @Query(
@@ -45,12 +46,32 @@ struct SiteSelectionView: View {
                         .foregroundStyle(Color.secondaryNavy.opacity(0.75))
                         .multilineTextAlignment(.center)
 
+                    if let staleDataMessage, !activeSites.isEmpty {
+                        Label(staleDataMessage, systemImage: "wifi.exclamationmark")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 4)
+                    }
+
                     if activeSites.isEmpty {
-                        ContentUnavailableView(
-                            "No Active Sites",
-                            systemImage: "building.2.crop.circle",
-                            description: Text("No active sites are currently available.")
-                        )
+                        if let staleDataMessage {
+                            ContentUnavailableView(
+                                "Unable to Refresh Sites",
+                                systemImage: "wifi.slash",
+                                description: Text(staleDataMessage)
+                            )
+                        } else if siteCatalogService.isRefreshing {
+                            ProgressView("Refreshing sites...")
+                                .tint(Color.secondaryNavy)
+                                .frame(maxWidth: .infinity, minHeight: 180)
+                        } else {
+                            ContentUnavailableView(
+                                "No Active Sites",
+                                systemImage: "building.2.crop.circle",
+                                description: Text("No active sites are currently available.")
+                            )
+                        }
                     } else {
                         VStack(spacing: 14) {
                             ForEach(activeSites) { site in
@@ -79,6 +100,19 @@ struct SiteSelectionView: View {
         }
         .navigationTitle("Sites")
         .navigationBarTitleDisplayMode(.inline)
+        .task {
+            await siteCatalogService.refreshSites()
+        }
+    }
+
+    private var staleDataMessage: String? {
+        guard let lastRefreshError = siteCatalogService.lastRefreshError else { return nil }
+
+        if activeSites.isEmpty {
+            return "The site list could not be loaded. Check your connection and try again. \(lastRefreshError)"
+        }
+
+        return "Showing cached sites. Latest refresh failed."
     }
 }
 
@@ -100,4 +134,6 @@ struct AnyButtonStyle: ButtonStyle {
     NavigationStack {
         SiteSelectionView()
     }
+    .environmentObject(PreviewSampleData.siteCatalogService)
+    .modelContainer(PreviewSampleData.container)
 }

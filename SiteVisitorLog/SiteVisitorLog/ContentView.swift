@@ -14,6 +14,9 @@ struct ContentView: View {
     @EnvironmentObject private var siteCatalogService: SiteCatalogService
     @AppStorage(SiteSelectionStorageKeys.selectedSiteId) private var selectedSiteId = ""
     @AppStorage(SiteSelectionStorageKeys.selectedSiteName) private var selectedSiteName = ""
+    #if DEBUG
+    @State private var isShowingSyncDiagnostics = false
+    #endif
 
     var body: some View {
         NavigationStack {
@@ -74,6 +77,18 @@ struct ContentView: View {
 
                                 Spacer()
 
+                                #if DEBUG
+                                Button {
+                                    isShowingSyncDiagnostics = true
+                                } label: {
+                                    Image(systemName: "info.circle")
+                                        .font(.headline)
+                                        .foregroundStyle(Color.secondaryNavy)
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("Show sync diagnostics")
+                                #endif
+
                                 Button(syncService.isSyncing ? "Syncing..." : "Sync Now") {
                                     Task {
                                         await syncService.syncPendingVisitors(forSiteId: selectedSiteId)
@@ -82,38 +97,6 @@ struct ContentView: View {
                                 .buttonStyle(.bordered)
                                 .disabled(syncService.isSyncing)
                             }
-
-                            #if DEBUG
-                            VStack(alignment: .leading, spacing: 8) {
-                                Divider()
-
-                                HStack {
-                                    Text("Diagnostics")
-                                        .font(.caption)
-                                        .fontWeight(.semibold)
-                                        .textCase(.uppercase)
-                                        .foregroundStyle(.secondary)
-
-                                    Spacer()
-
-                                    Button("Refresh From Server") {
-                                        Task {
-                                            await syncService.refreshFromServer(forSiteId: selectedSiteId)
-                                        }
-                                    }
-                                    .font(.caption)
-                                    .disabled(syncService.isSyncing)
-                                }
-
-                                diagnosticRow(title: "Backend", value: backendLabel)
-                                diagnosticRow(title: "Pending", value: "\(syncService.pendingSyncCount)")
-                                diagnosticRow(
-                                    title: "Last Success",
-                                    value: syncService.lastSuccessfulSyncAt?.formatted(date: .abbreviated, time: .shortened) ?? "Never"
-                                )
-                                diagnosticRow(title: "Last Error", value: syncService.lastSyncError ?? "None")
-                            }
-                            #endif
 
                             if let lastSyncAttemptAt = syncService.lastSyncAttemptAt {
                                 if let lastSuccessfulSyncAt = syncService.lastSuccessfulSyncAt {
@@ -187,6 +170,18 @@ struct ContentView: View {
         .task(id: selectedSiteId) {
             refreshSelectedSite()
         }
+        #if DEBUG
+        .sheet(isPresented: $isShowingSyncDiagnostics) {
+            NavigationStack {
+                SyncDiagnosticsView(
+                    selectedSiteId: selectedSiteId,
+                    backendLabel: backendLabel
+                )
+                .environmentObject(syncService)
+            }
+            .presentationDetents([.medium])
+        }
+        #endif
     }
 
     private var syncSummaryText: String {
@@ -260,6 +255,62 @@ struct ContentView: View {
         }
     }
 }
+
+#if DEBUG
+private struct SyncDiagnosticsView: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var syncService: VisitorSyncService
+
+    let selectedSiteId: String
+    let backendLabel: String
+
+    var body: some View {
+        List {
+            Section("Diagnostics") {
+                diagnosticRow(title: "Backend", value: backendLabel)
+                diagnosticRow(title: "Pending", value: "\(syncService.pendingSyncCount)")
+                diagnosticRow(
+                    title: "Last Success",
+                    value: syncService.lastSuccessfulSyncAt?.formatted(date: .abbreviated, time: .shortened) ?? "Never"
+                )
+                diagnosticRow(title: "Last Error", value: syncService.lastSyncError ?? "None")
+            }
+
+            Section {
+                Button(syncService.isSyncing ? "Refreshing..." : "Refresh From Server") {
+                    Task {
+                        await syncService.refreshFromServer(forSiteId: selectedSiteId)
+                    }
+                }
+                .disabled(syncService.isSyncing || selectedSiteId.isEmpty)
+            }
+        }
+        .navigationTitle("Sync Diagnostics")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Done") {
+                    dismiss()
+                }
+            }
+        }
+    }
+
+    private func diagnosticRow(title: String, value: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(width: 88, alignment: .leading)
+
+            Text(value)
+                .font(.caption)
+                .foregroundStyle(Color.secondaryNavy)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+#endif
 
 #Preview {
     ContentView()
